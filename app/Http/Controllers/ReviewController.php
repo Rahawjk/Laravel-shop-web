@@ -1,0 +1,47 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Product;
+use App\Models\Review;
+use Illuminate\Http\Request;
+
+class ReviewController extends Controller
+{
+    public function store(Request $request, Product $product)
+    {
+        $request->validate([
+            'rating' => 'required|integer|min:1|max:5',
+            'comment' => 'nullable|string|max:1000',
+        ]);
+
+        $alreadyReviewed = Review::where('user_id', auth()->id())
+            ->where('product_id', $product->id)
+            ->exists();
+
+        if ($alreadyReviewed) {
+            return redirect()->back()->with('error', 'You have already reviewed this product.');
+        }
+
+        Review::create([
+            'user_id' => auth()->id(),
+            'product_id' => $product->id,
+            'rating' => $request->rating,
+            'comment' => $request->comment,
+        ]);
+
+        return redirect()->back()->with('success', 'Thank you for your review!');
+    }
+
+    public function destroy(Review $review)
+    {
+
+        if ($review->user_id !== auth()->id() && !auth()->user()->is_admin) {
+            abort(403);
+        }
+
+        $review->delete();
+
+        return redirect()->back()->with('success', 'Review deleted.');
+    }
+}
